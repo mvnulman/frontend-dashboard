@@ -83,6 +83,7 @@
   --sidebar-accent-foreground: oklch(0.21 0.014 155);
   --sidebar-border: oklch(0.9 0.008 145);
   --sidebar-ring: oklch(0.57 0.15 142);
+  --radar-line: oklch(0.84 0.012 145);
 }
 
 .dark {
@@ -117,6 +118,7 @@
   --sidebar-accent-foreground: oklch(0.97 0.01 140);
   --sidebar-border: oklch(1 0 0 / 8%);
   --sidebar-ring: oklch(0.87 0.19 128 / 55%);
+  --radar-line: oklch(1 0 0 / 16%);
 }
 
 @layer base {
@@ -186,3 +188,16 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+@media (max-width: 639px) {
+  .radar-dot {
+    r: 9px;
+  }
+  .radar-dot-active {
+    r: 11px;
+  }
+  .radar-halo {
+    r: 18px;
+  }
+}
+
