@@ -641,7 +641,7 @@ export const technologies: Technology[] = [
   {
     slug: "view-transitions",
     name: "View Transitions",
-    version: "Baseline 2026",
+    version: "Baseline",
     category: "ui",
     maturity: "trial",
     tagline: "Transições de página nativas, sem biblioteca.",

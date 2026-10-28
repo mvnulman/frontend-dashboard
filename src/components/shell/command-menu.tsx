@@ -16,6 +16,7 @@ import {
 import { useTheme } from "next-themes";
 
 import {
+  Command,
   CommandDialog,
   CommandEmpty,
   CommandGroup,
@@ -89,8 +90,10 @@ export function CommandMenu() {
         onOpenChange={(nextOpen) => setOpen(nextOpen)}
         title="Busca rápida"
         description="Navegue entre páginas e tecnologias do painel."
+        className="sm:max-w-lg"
       >
-        <CommandInput placeholder="Buscar páginas ou tecnologias..." />
+        <Command>
+          <CommandInput placeholder="Buscar páginas ou tecnologias..." />
         <CommandList>
           <CommandEmpty>Nenhum resultado encontrado.</CommandEmpty>
           <CommandGroup heading="Páginas">
@@ -117,7 +120,7 @@ export function CommandMenu() {
                 <CategoryDot category={tech.category} />
                 <span className="truncate">{tech.name}</span>
                 <span className="font-mono text-[10px] text-muted-foreground">
-                  v{tech.version}
+                  {tech.kind === "platform" ? tech.version : `v${tech.version}`}
                 </span>
                 <CommandShortcut>
                   {CATEGORY_MAP[tech.category].shortLabel}
@@ -162,7 +165,8 @@ export function CommandMenu() {
               Atualizar snapshot
             </CommandItem>
           </CommandGroup>
-        </CommandList>
+          </CommandList>
+        </Command>
       </CommandDialog>
     </>
   );
