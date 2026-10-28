@@ -31,7 +31,7 @@ const SCORE_LABELS: Record<keyof TechnologyScores, string> = {
   dx: "Developer experience",
   performance: "Performance",
   ecosystem: "Ecossistema",
-  learning: "Curva de aprendizado",
+  learning: "Facilidade de aprendizado",
   stability: "Estabilidade",
 };
 
