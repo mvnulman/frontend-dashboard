@@ -44,6 +44,14 @@ export interface Technology {
   scores: TechnologyScores;
   useCase: string;
   kind: "library" | "platform";
+  /** Série semanal de downloads (12 semanas), quando houver fonte npm. */
+  series?: number[];
+  /** Indica se as métricas vieram de fontes públicas atualizadas. */
+  live?: boolean;
+  /** Releases publicados nos últimos 90 dias, via GitHub. */
+  releasesLast90d?: number;
+  /** Observação sobre a origem ou limitação da medição. */
+  sourceNote?: string;
 }
 
 export type ReleaseType = "major" | "minor" | "preview";
@@ -59,6 +67,7 @@ export interface Release {
   title: string;
   summary: string;
   tags: string[];
+  url?: string;
 }
 
 export interface Signal {
@@ -84,4 +93,37 @@ export interface MaturityMeta {
   label: string;
   description: string;
   color: string;
+}
+
+export type SourceStatus = "ok" | "partial" | "disabled";
+
+export interface DownloadPoint {
+  week: string;
+  frameworks: number;
+  meta: number;
+  ui: number;
+  tooling: number;
+  state: number;
+}
+
+export interface ReleaseCounts {
+  major: number;
+  minor: number;
+  preview: number;
+}
+
+export interface DashboardData {
+  technologies: Technology[];
+  releases: Release[];
+  signals: Signal[];
+  categorySeries: DownloadPoint[];
+  sources: {
+    npm: SourceStatus;
+    github: SourceStatus;
+  };
+  generatedAt: string;
+  githubConfigured: boolean;
+  liveCount: number;
+  releases90d: number;
+  releaseCounts: ReleaseCounts;
 }
