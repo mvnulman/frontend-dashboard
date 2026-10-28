@@ -1,14 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import {
-  CartesianGrid,
-  Line,
-  LineChart,
-  ReferenceLine,
-  XAxis,
-  YAxis,
-} from "recharts";
+import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts";
 
 import {
   Card,
@@ -26,13 +19,12 @@ import {
 } from "@/components/ui/chart";
 import { Segmented } from "@/components/segmented";
 import { CATEGORIES } from "@/lib/data";
-import { formatDecimal } from "@/lib/format";
-import type { AdoptionPoint } from "@/lib/data";
+import { formatCompact } from "@/lib/format";
+import type { DownloadPoint } from "@/lib/types";
 import type { CategoryId } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
-export type PeriodKey = "6" | "12" | "24";
-export type AdoptionSeries = Record<PeriodKey, AdoptionPoint[]>;
+type PeriodKey = "4" | "8" | "12";
 
 const chartConfig = CATEGORIES.reduce<ChartConfig>((config, category) => {
   config[category.id] = {
@@ -43,15 +35,20 @@ const chartConfig = CATEGORIES.reduce<ChartConfig>((config, category) => {
 }, {});
 
 const PERIOD_OPTIONS: { value: PeriodKey; label: string }[] = [
-  { value: "6", label: "6m" },
-  { value: "12", label: "12m" },
-  { value: "24", label: "24m" },
+  { value: "4", label: "4s" },
+  { value: "8", label: "8s" },
+  { value: "12", label: "12s" },
 ];
 
-export function CategoryAdoptionChart({ series }: { series: AdoptionSeries }) {
+export function CategoryDownloadsChart({
+  series,
+}: {
+  series: DownloadPoint[];
+}) {
   const [period, setPeriod] = useState<PeriodKey>("12");
   const [hidden, setHidden] = useState<CategoryId[]>([]);
-  const data = series[period];
+  const weeks = Number(period);
+  const data = series.slice(-weeks);
 
   const visibleCategories = CATEGORIES.filter(
     (category) => !hidden.includes(category.id),
@@ -59,12 +56,8 @@ export function CategoryAdoptionChart({ series }: { series: AdoptionSeries }) {
   const values = data.flatMap((point) =>
     visibleCategories.map((category) => point[category.id]),
   );
-  const min = values.length ? Math.min(100, ...values) : 100;
-  const max = values.length ? Math.max(...values) : 110;
-  const domain: [number, number] = [
-    Math.floor((min - 6) / 10) * 10,
-    Math.ceil((max + 6) / 10) * 10,
-  ];
+  const max = values.length ? Math.max(...values) : 0;
+  const domain: [number, number] = [0, max > 0 ? Math.ceil(max * 1.08) : 100];
 
   const toggleCategory = (id: CategoryId) => {
     setHidden((current) =>
@@ -74,16 +67,18 @@ export function CategoryAdoptionChart({ series }: { series: AdoptionSeries }) {
     );
   };
 
+  const lastPoint = data[data.length - 1];
+
   return (
     <Card className="h-full gap-3 bg-card/70">
       <CardHeader>
-        <CardTitle>Tração por categoria</CardTitle>
+        <CardTitle>Downloads por categoria</CardTitle>
         <CardDescription>
-          Crescimento acumulado no período · base 100
+          Soma semanal real · npm · últimas {weeks} semanas
         </CardDescription>
         <CardAction>
           <Segmented
-            ariaLabel="Período do gráfico"
+            ariaLabel="Semanas exibidas no gráfico"
             options={PERIOD_OPTIONS}
             value={period}
             onChange={setPeriod}
@@ -108,7 +103,7 @@ export function CategoryAdoptionChart({ series }: { series: AdoptionSeries }) {
               strokeDasharray="2 7"
             />
             <XAxis
-              dataKey="month"
+              dataKey="week"
               tickLine={false}
               axisLine={false}
               tickMargin={10}
@@ -121,13 +116,9 @@ export function CategoryAdoptionChart({ series }: { series: AdoptionSeries }) {
               tickLine={false}
               axisLine={false}
               tickMargin={8}
-              width={38}
+              width={42}
+              tickFormatter={(value) => formatCompact(Number(value))}
               tick={{ fill: "var(--muted-foreground)", fontSize: 10 }}
-            />
-            <ReferenceLine
-              y={100}
-              stroke="var(--border)"
-              strokeDasharray="3 5"
             />
             <ChartTooltip
               cursor={{
@@ -137,7 +128,8 @@ export function CategoryAdoptionChart({ series }: { series: AdoptionSeries }) {
               content={
                 <ChartTooltipContent
                   indicator="line"
-                  labelFormatter={(label) => `Índice · ${label}`}
+                  labelFormatter={(label) => `Semana de ${label}`}
+                  formatter={(value) => formatCompact(Number(value))}
                 />
               }
             />
@@ -159,7 +151,7 @@ export function CategoryAdoptionChart({ series }: { series: AdoptionSeries }) {
         <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2">
           {CATEGORIES.map((category) => {
             const isHidden = hidden.includes(category.id);
-            const lastValue = data[data.length - 1][category.id];
+            const value = lastPoint?.[category.id] ?? 0;
 
             return (
               <button
@@ -180,7 +172,7 @@ export function CategoryAdoptionChart({ series }: { series: AdoptionSeries }) {
                   {category.shortLabel}
                 </span>
                 <span className="font-mono font-medium tabular-nums">
-                  {formatDecimal(lastValue)}
+                  {formatCompact(value)}
                 </span>
               </button>
             );

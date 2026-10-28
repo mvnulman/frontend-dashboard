@@ -19,6 +19,7 @@ import { GrowthBadge } from "@/components/growth-badge";
 import { MaturityBadge } from "@/components/maturity-badge";
 import { PageHeader } from "@/components/page-header";
 import { Reveal } from "@/components/reveal";
+import { SourceNotice } from "@/components/source-notice";
 import { TechCard } from "@/components/tendencias/tech-card";
 import { TechDetailDialog } from "@/components/tech-detail-dialog";
 import { Button } from "@/components/ui/button";
@@ -34,13 +35,15 @@ import {
   CATEGORIES,
   CATEGORY_MAP,
   MATURITIES,
-  SNAPSHOT,
-  getTechBySlug,
-  technologies,
 } from "@/lib/data";
 import { downloadTechnologiesCsv } from "@/lib/csv";
 import { formatCompact } from "@/lib/format";
-import type { CategoryId, MaturityId, Technology } from "@/lib/types";
+import type {
+  CategoryId,
+  DashboardData,
+  MaturityId,
+  Technology,
+} from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 type CategoryFilter = CategoryId | "all";
@@ -64,15 +67,15 @@ const MATURITY_OPTIONS: { value: MaturityFilter; label: string }[] = [
   })),
 ];
 
-const CATEGORY_OPTIONS: { value: CategoryFilter; label: string; count: number }[] =
+const CATEGORY_OPTIONS = (items: Technology[]) =>
   [
-    { value: "all", label: "Todas", count: technologies.length },
+    { value: "all", label: "Todas", count: items.length },
     ...CATEGORIES.map((category) => ({
       value: category.id,
       label: category.label,
-      count: technologies.filter((tech) => tech.category === category.id).length,
+      count: items.filter((tech) => tech.category === category.id).length,
     })),
-  ];
+  ] satisfies { value: CategoryFilter; label: string; count: number }[];
 
 function normalize(value: string) {
   return value
@@ -87,7 +90,9 @@ function parseSort(value: string | null): SortKey {
     : "momentum";
 }
 
-export function TrendsClient() {
+export function TrendsClient({ data }: { data: DashboardData }) {
+  const technologies = data.technologies;
+  const categoryOptions = CATEGORY_OPTIONS(technologies);
   const router = useRouter();
   const searchParams = useSearchParams();
   const [query, setQuery] = useState("");
@@ -102,8 +107,8 @@ export function TrendsClient() {
   const selectedTech = useMemo(() => {
     const slug = searchParams.get("tech");
     if (!slug) return null;
-    return getTechBySlug(slug) ?? null;
-  }, [searchParams]);
+    return technologies.find((tech) => tech.slug === slug) ?? null;
+  }, [searchParams, technologies]);
 
   const filtered = useMemo(() => {
     const term = normalize(deferredQuery.trim());
@@ -138,7 +143,7 @@ export function TrendsClient() {
           return b.momentum - a.momentum;
       }
     });
-  }, [category, deferredQuery, maturity, sort]);
+  }, [category, deferredQuery, maturity, sort, technologies]);
 
   const hasFilters =
     query.length > 0 || category !== "all" || maturity !== "all";
@@ -170,9 +175,9 @@ export function TrendsClient() {
     <div className="space-y-4">
       <Reveal>
         <PageHeader
-          eyebrow={`catálogo · ${SNAPSHOT.label}`}
+          eyebrow={`catálogo · ${data.liveCount} métricas ao vivo`}
           title="Tendências & tecnologias"
-          description="Explore o catálogo completo, filtre por estágio de maturidade e compare o momentum de cada ferramenta."
+          description="Explore o catálogo completo, filtre por estágio de maturidade e compare o momentum real de cada ferramenta."
           actions={
             <Button variant="outline" onClick={exportCsv} disabled={!filtered.length}>
               <Download />
@@ -181,6 +186,11 @@ export function TrendsClient() {
           }
         />
       </Reveal>
+
+      <SourceNotice
+        sources={data.sources}
+        githubConfigured={data.githubConfigured}
+      />
 
       <Reveal delay={60}>
         <div className="rounded-xl border bg-card/60 p-3">
@@ -291,7 +301,7 @@ export function TrendsClient() {
           </div>
 
           <div className="mt-3 flex items-center gap-1.5 overflow-x-auto pb-0.5 no-scrollbar">
-            {CATEGORY_OPTIONS.map((option) => {
+            {categoryOptions.map((option) => {
               const active = category === option.value;
               const color =
                 option.value === "all"
@@ -387,7 +397,7 @@ export function TrendsClient() {
             <span>Maturidade</span>
             <span className="text-right">Adoção</span>
             <span className="text-right">Momentum</span>
-            <span className="text-right">Crescimento</span>
+            <span className="text-right">Crescimento · 30d</span>
           </div>
           {filtered.map((tech) => {
             const meta = CATEGORY_MAP[tech.category];
@@ -417,9 +427,11 @@ export function TrendsClient() {
                     </div>
                     <p className="mt-0.5 truncate text-[10px] text-muted-foreground md:hidden">
                       {meta.shortLabel} ·{" "}
-                      {tech.kind === "platform"
-                        ? "padrão web"
-                        : `${formatCompact(tech.downloads)} / semana`}
+                      {!tech.live
+                        ? "curadoria"
+                        : tech.kind === "platform"
+                          ? "sem npm"
+                          : `${formatCompact(tech.downloads)} / semana`}
                     </p>
                   </div>
                 </div>
@@ -432,13 +444,17 @@ export function TrendsClient() {
                   <MaturityBadge maturity={tech.maturity} />
                 </span>
                 <span className="hidden text-right font-mono text-xs tabular-nums md:block">
-                  {tech.adoption}
+                  {tech.live ? tech.adoption : "—"}
                 </span>
                 <span className="text-right font-mono text-xs font-medium tabular-nums">
-                  {tech.momentum}
+                  {tech.live ? tech.momentum : "—"}
                 </span>
                 <span className="hidden justify-end md:flex">
-                  <GrowthBadge value={tech.growth} suffix="" />
+                  {tech.live ? (
+                    <GrowthBadge value={tech.growth} suffix="" />
+                  ) : (
+                    <span className="text-[10px] text-muted-foreground">—</span>
+                  )}
                 </span>
               </button>
             );
@@ -447,8 +463,8 @@ export function TrendsClient() {
       )}
 
       <p className="text-center text-[10px] text-muted-foreground">
-        Clique em uma tecnologia para abrir a ficha completa · snapshot{" "}
-        {SNAPSHOT.label}
+        Clique em uma tecnologia para abrir a ficha completa · dados de npm +
+        GitHub
       </p>
 
       <TechDetailDialog tech={selectedTech} onClose={closeTech} />

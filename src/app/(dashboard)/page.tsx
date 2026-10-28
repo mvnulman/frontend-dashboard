@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { Suspense } from "react";
+import { connection } from "next/server";
 import {
   ArrowUpRight,
   GitCompareArrows,
@@ -10,7 +12,7 @@ import {
   Zap,
 } from "lucide-react";
 
-import { CategoryAdoptionChart, type AdoptionSeries } from "@/components/dashboard/adoption-chart";
+import { CategoryDownloadsChart } from "@/components/dashboard/downloads-chart";
 import { KpiCard } from "@/components/dashboard/kpi-card";
 import { LatestReleases } from "@/components/dashboard/latest-releases";
 import { MaturityDonut } from "@/components/dashboard/maturity-donut";
@@ -18,66 +20,107 @@ import { MomentumList } from "@/components/dashboard/momentum-list";
 import { SignalFeed } from "@/components/dashboard/signal-feed";
 import { PageHeader } from "@/components/page-header";
 import { Reveal } from "@/components/reveal";
+import { SourceNotice } from "@/components/source-notice";
+import { PageSkeleton } from "@/components/shell/page-skeleton";
 import { Sparkline } from "@/components/sparkline";
 import { buttonVariants } from "@/components/ui/button";
+import { CATEGORIES, MATURITIES } from "@/lib/data";
+import { getDashboardData } from "@/lib/live";
 import {
-  CATEGORIES,
-  MOMENTUM_AVERAGE,
-  SNAPSHOT,
-  getAdoptionSeries,
-  getCategoryCounts,
-  getCategoryGrowthSeries,
-  getOverallSeries,
-  getReleaseCountByMonth,
-  getRisingTechnologies,
-  getTechBySlug,
-  releases,
-  technologies,
-} from "@/lib/data";
-import { formatMonthShortKey } from "@/lib/format";
+  formatCompact,
+  formatMonthShortKey,
+  formatSigned,
+} from "@/lib/format";
+import type { DashboardData, MaturityId } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 export const metadata = {
   title: "Visão geral",
 };
 
-const series: AdoptionSeries = {
-  "6": getCategoryGrowthSeries(6),
-  "12": getCategoryGrowthSeries(12),
-  "24": getCategoryGrowthSeries(24),
-};
-
-const categoryCounts = getCategoryCounts();
-const rising = getRisingTechnologies();
-const releaseMonths = getReleaseCountByMonth().slice(-3);
-const maxReleases = Math.max(...releaseMonths.map((item) => item.count));
-const majorCount = releases.filter((release) => release.type === "major").length;
-const previewCount = releases.filter(
-  (release) => release.type === "preview",
-).length;
-
-const categoryMomentum = CATEGORIES.map((category) => {
-  const members = technologies.filter((tech) => tech.category === category.id);
-  return {
-    ...category,
-    average: Math.round(
-      members.reduce((total, tech) => total + tech.momentum, 0) / members.length,
-    ),
-  };
-}).sort((a, b) => b.average - a.average);
-
-const topCategory = categoryMomentum[0];
-const typescript = getTechBySlug("typescript")!;
-const overallSeries = getOverallSeries(12);
-
 export default function OverviewPage() {
+  return (
+    <Suspense fallback={<PageSkeleton />}>
+      <OverviewContent />
+    </Suspense>
+  );
+}
+
+async function OverviewContent() {
+  await connection();
+  const data = await getDashboardData();
+
+  return <OverviewView data={data} />;
+}
+
+function OverviewView({ data }: { data: DashboardData }) {
+  const live = data.technologies.filter((tech) => tech.live);
+  const rising = live
+    .filter((tech) => tech.growth >= 15)
+    .sort((a, b) => b.growth - a.growth);
+  const topGrowth = [...live].sort((a, b) => b.growth - a.growth)[0];
+  const momentumLeaders = [...live]
+    .sort((a, b) => b.momentum - a.momentum)
+    .slice(0, 5);
+  const averageMomentum = live.length
+    ? Math.round(
+        live.reduce((total, tech) => total + tech.momentum, 0) / live.length,
+      )
+    : 0;
+
+  const categoryMomentum = CATEGORIES.map((category) => {
+    const members = live.filter((tech) => tech.category === category.id);
+    return {
+      ...category,
+      average: members.length
+        ? Math.round(
+            members.reduce((total, tech) => total + tech.momentum, 0) /
+              members.length,
+          )
+        : 0,
+    };
+  }).sort((a, b) => b.average - a.average);
+
+  const topCategory = categoryMomentum[0];
+  const categoryCounts = CATEGORIES.map((category) => ({
+    id: category.id,
+    count: data.technologies.filter((tech) => tech.category === category.id)
+      .length,
+  }));
+  const maturityCounts = MATURITIES.map((maturity) => ({
+    id: maturity.id as MaturityId,
+    count: data.technologies.filter((tech) => tech.maturity === maturity.id)
+      .length,
+  }));
+
+  const generatedAt = new Date(data.generatedAt);
+  const majorCount = data.releaseCounts.major;
+  const previewCount = data.releaseCounts.preview;
+
+  const releaseMonths = Array.from({ length: 3 }, (_, index) => {
+    const date = new Date(
+      Date.UTC(generatedAt.getUTCFullYear(), generatedAt.getUTCMonth() - index, 1),
+    );
+    const key = `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
+    return {
+      key,
+      label: formatMonthShortKey(key),
+      count: data.releases.filter((release) => release.date.startsWith(key))
+        .length,
+    };
+  }).reverse();
+  const maxReleases = Math.max(...releaseMonths.map((item) => item.count), 1);
+
+  const topCategoryLabel =
+    categoryCounts.find((item) => item.id === "tooling")?.count ?? 0;
+
   return (
     <div className="space-y-3">
       <Reveal>
         <PageHeader
-          eyebrow={`snapshot · ${SNAPSHOT.label}`}
+          eyebrow={`visão geral · ${data.liveCount} métricas ao vivo`}
           title="O pulso do frontend"
-          description="Uma leitura visual do que está crescendo, do que já é padrão e do que merece um teste no seu próximo projeto."
+          description="Uma leitura real do ecossistema: downloads, releases e atividade do GitHub atualizados automaticamente."
           actions={
             <>
               <Link
@@ -96,9 +139,16 @@ export default function OverviewPage() {
         />
       </Reveal>
 
+      <SourceNotice
+        sources={data.sources}
+        githubConfigured={data.githubConfigured}
+      />
+
       <Reveal delay={60}>
         <Link
-          href="/tendencias?tech=typescript"
+          href={
+            topGrowth ? `/tendencias?tech=${topGrowth.slug}` : "/tendencias"
+          }
           className="group relative flex flex-col gap-3 overflow-hidden rounded-xl border border-chart-1/25 bg-card/60 px-4 py-3.5 transition-colors hover:border-chart-1/45 hover:bg-card sm:flex-row sm:items-center"
         >
           <div className="pointer-events-none absolute inset-y-0 left-0 w-72 bg-[radial-gradient(ellipse_at_left,color-mix(in_oklab,var(--chart-1)_14%,transparent),transparent_70%)]" />
@@ -107,29 +157,32 @@ export default function OverviewPage() {
           </span>
           <div className="relative min-w-0 flex-1">
             <p className="font-mono text-[9px] tracking-[0.18em] text-chart-1 uppercase">
-              destaque do snapshot
+              maior tração agora
             </p>
             <p className="mt-0.5 text-[13px] leading-snug font-medium">
-              TypeScript 7 é o maior salto de DX do trimestre: compilador nativo
-              em Go, até 10x mais rápido.
+              {topGrowth && topGrowth.growth > 0
+                ? `${topGrowth.name} lidera o crescimento: ${formatSigned(topGrowth.growth)} em downloads nas últimas 4 semanas.`
+                : "Acompanhando downloads e releases reais do ecossistema."}
             </p>
           </div>
           <div className="relative flex items-center gap-4 self-end sm:self-auto">
             <div className="hidden w-24 md:block">
-              <Sparkline
-                data={getAdoptionSeries(typescript, 12)}
-                color="var(--chart-1)"
-                className="h-7"
-                filled={false}
-                strokeWidth={1.5}
-              />
+              {topGrowth?.series?.length ? (
+                <Sparkline
+                  data={topGrowth.series}
+                  color="var(--chart-1)"
+                  className="h-7"
+                  filled={false}
+                  strokeWidth={1.5}
+                />
+              ) : null}
             </div>
             <div className="text-right">
               <p className="font-mono text-lg leading-none font-semibold text-chart-1 tabular-nums">
-                +210%
+                {topGrowth ? formatSigned(topGrowth.growth) : "—"}
               </p>
               <p className="mt-0.5 text-[9px] tracking-wide text-muted-foreground uppercase">
-                YoY
+                30 dias
               </p>
             </div>
             <ArrowUpRight
@@ -144,14 +197,14 @@ export default function OverviewPage() {
         <Reveal delay={90}>
           <KpiCard
             label="Tecnologias monitoradas"
-            value={String(technologies.length)}
+            value={String(data.technologies.length)}
             icon={Layers}
             delta={
               <span className="rounded-full bg-chart-1/10 px-1.5 py-0.5 text-[10px] font-medium text-chart-1">
-                +6
+                {data.liveCount} ao vivo
               </span>
             }
-            hint={`5 categorias · ${categoryCounts.find((item) => item.id === "tooling")?.count} em build & tooling`}
+            hint={`5 categorias · ${topCategoryLabel} em build & tooling`}
           >
             <div className="flex h-1.5 w-full gap-px overflow-hidden rounded-full">
               {categoryCounts.map((item) => (
@@ -159,7 +212,7 @@ export default function OverviewPage() {
                   key={item.id}
                   className="h-full first:rounded-l-full last:rounded-r-full"
                   style={{
-                    width: `${(item.count / technologies.length) * 100}%`,
+                    width: `${(item.count / data.technologies.length) * 100}%`,
                     background:
                       CATEGORIES.find((category) => category.id === item.id)
                         ?.color ?? "var(--chart-1)",
@@ -179,10 +232,10 @@ export default function OverviewPage() {
             accent="var(--chart-2)"
             delta={
               <span className="rounded-full bg-chart-2/10 px-1.5 py-0.5 text-[10px] font-medium text-chart-2">
-                {rising.length} de {technologies.length}
+                {rising.length} de {live.length}
               </span>
             }
-            hint="crescimento igual ou acima de 15% YoY"
+            hint="crescimento de downloads ≥ 15% em 30 dias"
           >
             <div className="flex flex-wrap gap-1">
               {rising.slice(0, 3).map((tech) => (
@@ -193,9 +246,11 @@ export default function OverviewPage() {
                   {tech.name}
                 </span>
               ))}
-              <span className="px-1 py-0.5 text-[9px] text-muted-foreground">
-                +{rising.length - 3}
-              </span>
+              {rising.length > 3 && (
+                <span className="px-1 py-0.5 text-[9px] text-muted-foreground">
+                  +{rising.length - 3}
+                </span>
+              )}
             </div>
           </KpiCard>
         </Reveal>
@@ -203,7 +258,7 @@ export default function OverviewPage() {
         <Reveal delay={170}>
           <KpiCard
             label="Releases · 90 dias"
-            value={String(releases.length)}
+            value={String(data.releases90d)}
             icon={Tag}
             accent="var(--chart-4)"
             delta={
@@ -211,15 +266,19 @@ export default function OverviewPage() {
                 {majorCount} major
               </span>
             }
-            hint={`${previewCount} preview e ${releases.length - majorCount - previewCount} minors no período`}
+            hint={
+              data.releases90d > 0
+                ? `${previewCount} previews e ${Math.max(0, data.releases90d - majorCount - previewCount)} minors no período`
+                : "Configure o GITHUB_TOKEN para carregar releases"
+            }
           >
             <div className="flex h-6 items-end gap-1.5">
               {releaseMonths.map((item) => (
                 <span
-                  key={item.month}
+                  key={item.key}
                   className="flex-1 rounded-sm bg-chart-4/25"
                   style={{
-                    height: `${Math.max(20, (item.count / maxReleases) * 100)}%`,
+                    height: `${Math.max(8, (item.count / maxReleases) * 100)}%`,
                   }}
                   title={`${item.count} releases`}
                 />
@@ -227,8 +286,8 @@ export default function OverviewPage() {
             </div>
             <div className="flex gap-1.5 font-mono text-[9px] text-muted-foreground">
               {releaseMonths.map((item) => (
-                <span key={item.month} className="flex-1 text-center">
-                  {formatMonthShortKey(item.month)}
+                <span key={item.key} className="flex-1 text-center">
+                  {item.label}
                 </span>
               ))}
             </div>
@@ -238,17 +297,23 @@ export default function OverviewPage() {
         <Reveal delay={210}>
           <KpiCard
             label="Momentum médio"
-            value={`${MOMENTUM_AVERAGE}`}
+            value={`${averageMomentum}`}
             icon={Sparkles}
             accent="var(--chart-3)"
-            delta={<span className="text-[10px] text-muted-foreground">/ 100</span>}
-            hint={`${topCategory.shortLabel} lidera com média ${topCategory.average}`}
+            delta={
+              <span className="text-[10px] text-muted-foreground">/ 100</span>
+            }
+            hint={
+              topCategory.average > 0
+                ? `${topCategory.shortLabel} lidera com média ${topCategory.average}`
+                : "Sem dados suficientes para o índice"
+            }
           >
             <div className="space-y-1.5">
               <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
                 <div
                   className="h-full rounded-full bg-gradient-to-r from-chart-2 via-chart-1 to-chart-4"
-                  style={{ width: `${MOMENTUM_AVERAGE}%` }}
+                  style={{ width: `${averageMomentum}%` }}
                 />
               </div>
               <div className="flex items-center justify-between font-mono text-[9px] text-muted-foreground">
@@ -262,22 +327,25 @@ export default function OverviewPage() {
 
       <div className="grid grid-cols-1 gap-3 xl:grid-cols-12">
         <Reveal delay={140} className="xl:col-span-8">
-          <CategoryAdoptionChart series={series} />
+          <CategoryDownloadsChart series={data.categorySeries} />
         </Reveal>
         <Reveal delay={200} className="xl:col-span-4">
-          <MomentumList />
+          <MomentumList technologies={data.technologies} />
         </Reveal>
       </div>
 
       <div className="grid grid-cols-1 gap-3 xl:grid-cols-12">
         <Reveal delay={160} className="xl:col-span-5">
-          <SignalFeed />
+          <SignalFeed signals={data.signals} />
         </Reveal>
         <Reveal delay={220} className="xl:col-span-3">
-          <MaturityDonut />
+          <MaturityDonut counts={maturityCounts} />
         </Reveal>
         <Reveal delay={260} className="xl:col-span-4">
-          <LatestReleases />
+          <LatestReleases
+            releases={data.releases}
+            technologies={data.technologies}
+          />
         </Reveal>
       </div>
 
@@ -285,16 +353,16 @@ export default function OverviewPage() {
         <div className="grid grid-cols-1 gap-px overflow-hidden rounded-xl border bg-border sm:grid-cols-3">
           {[
             {
-              title: "Adoção",
-              text: "Índice de 0 a 100 que combina uso, downloads e intenção de adoção.",
+              title: "Downloads",
+              text: "Soma semanal real vinda da API de downloads do npm.",
             },
             {
               title: "Momentum",
-              text: "Velocidade de crescimento somada à atividade do ecossistema.",
+              text: "Variação de downloads em 30 dias combinada à cadência de releases.",
             },
             {
-              title: "Anéis do radar",
-              text: "Adotar → Testar → Avaliar → Observar. Do centro para fora.",
+              title: "Adoção",
+              text: "Índice atual de 0 a 100 com downloads, estrelas e releases.",
             },
           ].map((item, index) => (
             <div key={item.title} className="bg-card/80 px-4 py-3.5">
@@ -316,8 +384,8 @@ export default function OverviewPage() {
         <div className="flex flex-col items-start justify-between gap-3 rounded-xl border border-dashed px-4 py-3 text-[11px] text-muted-foreground sm:flex-row sm:items-center">
           <p className="flex items-center gap-1.5">
             <Sparkles className="size-3.5 text-chart-1" aria-hidden="true" />
-            Dados demonstrativos com curadoria editorial. Última atualização em{" "}
-            {SNAPSHOT.updatedAt.split("-").reverse().join("/")}.
+            Dados públicos de npm + GitHub. Maturidade e scores são curadoria
+            editorial.
           </p>
           <Link
             href="/comparar"
@@ -331,7 +399,12 @@ export default function OverviewPage() {
       </Reveal>
 
       <p className="sr-only">
-        {`Tendência geral de adoção no período: ${overallSeries[0]} para ${overallSeries[overallSeries.length - 1]}.`}
+        Painel com {data.liveCount} tecnologias com métricas ao vivo de npm e
+        GitHub, atualizado automaticamente.
+        {momentumLeaders.length > 0 &&
+          ` Líder de momentum: ${momentumLeaders[0].name}.`}
+        {topGrowth &&
+          ` Maior crescimento de downloads: ${topGrowth.name}, ${formatCompact(topGrowth.downloads)} downloads por semana.`}
       </p>
     </div>
   );

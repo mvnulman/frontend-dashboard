@@ -22,7 +22,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { CATEGORY_MAP, getAdoptionSeries } from "@/lib/data";
+import { CATEGORY_MAP } from "@/lib/data";
 import { formatCompact, formatShortDate } from "@/lib/format";
 import type { Technology, TechnologyScores } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -84,6 +84,11 @@ export function TechDetailDialog({
                           : `v${tech.version}`}
                       </span>
                       <MaturityBadge maturity={tech.maturity} />
+                      {!tech.live && (
+                        <span className="rounded border border-border/70 bg-muted/30 px-1 py-px text-[8px] text-muted-foreground uppercase">
+                          curadoria
+                        </span>
+                      )}
                     </div>
                     <DialogDescription className="mt-1 text-[12px] leading-relaxed">
                       {tech.tagline}
@@ -98,30 +103,36 @@ export function TechDetailDialog({
                 {[
                   {
                     label: "Adoção",
-                    value: `${tech.adoption}`,
-                    hint: "/100",
+                    value: tech.live ? `${tech.adoption}` : "—",
+                    hint: tech.live ? "/100" : null,
                   },
                   {
                     label: "Momentum",
-                    value: `${tech.momentum}`,
-                    hint: "/100",
+                    value: tech.live ? `${tech.momentum}` : "—",
+                    hint: tech.live ? "/100" : null,
                   },
                   {
-                    label: "Crescimento",
+                    label: "Crescimento · 30d",
                     value: null,
                     hint: null,
                   },
                   {
                     label:
                       tech.kind === "platform" ? "Plataforma" : "Downloads",
-                    value:
-                      tech.kind === "platform"
+                    value: !tech.live
+                      ? "—"
+                      : tech.kind === "platform"
                         ? "Web"
                         : formatCompact(tech.downloads),
-                    hint: tech.kind === "platform" ? "padrão" : "/semana",
+                    hint:
+                      tech.live && tech.kind !== "platform"
+                        ? "/semana"
+                        : tech.kind === "platform"
+                          ? "padrão"
+                          : null,
                   },
                 ].map((metric) =>
-                  metric.label === "Crescimento" ? (
+                  metric.label.startsWith("Crescimento") ? (
                     <div
                       key={metric.label}
                       className="rounded-lg border border-border/70 bg-muted/20 px-3 py-2"
@@ -130,7 +141,11 @@ export function TechDetailDialog({
                         {metric.label}
                       </p>
                       <div className="mt-1">
-                        <GrowthBadge value={tech.growth} suffix="" />
+                        {tech.live && tech.downloads > 0 ? (
+                          <GrowthBadge value={tech.growth} suffix="" />
+                        ) : (
+                          <span className="text-sm text-muted-foreground">—</span>
+                        )}
                       </div>
                     </div>
                   ) : (
@@ -143,31 +158,35 @@ export function TechDetailDialog({
                       </p>
                       <p className="mt-1 font-mono text-lg leading-none font-semibold tabular-nums">
                         {metric.value}
-                        <span className="ml-0.5 text-[10px] font-normal text-muted-foreground">
-                          {metric.hint}
-                        </span>
+                        {metric.hint && (
+                          <span className="ml-0.5 text-[10px] font-normal text-muted-foreground">
+                            {metric.hint}
+                          </span>
+                        )}
                       </p>
                     </div>
                   ),
                 )}
               </div>
 
-              <div className="rounded-lg border border-border/70 bg-card px-3 py-2">
-                <div className="flex items-center justify-between">
-                  <p className="text-[10px] text-muted-foreground">
-                    Trajetória de adoção · 12 meses
-                  </p>
-                  <span className="font-mono text-[10px] tabular-nums">
-                    {tech.adoption}
-                  </span>
+              {tech.series && tech.series.length > 0 && (
+                <div className="rounded-lg border border-border/70 bg-card px-3 py-2">
+                  <div className="flex items-center justify-between">
+                    <p className="text-[10px] text-muted-foreground">
+                      Downloads semanais · 12 semanas
+                    </p>
+                    <span className="font-mono text-[10px] tabular-nums">
+                      {formatCompact(tech.downloads)}
+                    </span>
+                  </div>
+                  <Sparkline
+                    data={tech.series}
+                    color={meta.color}
+                    className="mt-1 h-14"
+                    showDot
+                  />
                 </div>
-                <Sparkline
-                  data={getAdoptionSeries(tech, 12)}
-                  color={meta.color}
-                  className="mt-1 h-14"
-                  showDot
-                />
-              </div>
+              )}
 
               <p className="text-[12px] leading-relaxed text-muted-foreground">
                 {tech.description}
@@ -262,6 +281,12 @@ export function TechDetailDialog({
                   {meta.label}
                 </span>
               </div>
+
+              {tech.sourceNote && (
+                <p className="text-[9px] leading-relaxed text-muted-foreground">
+                  {tech.sourceNote}
+                </p>
+              )}
             </div>
 
             <div className="flex flex-wrap items-center gap-2 border-t border-border/70 bg-muted/30 px-5 py-3">

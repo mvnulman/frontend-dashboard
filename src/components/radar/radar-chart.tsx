@@ -5,7 +5,6 @@ import { useMemo, useState } from "react";
 import {
   CATEGORIES,
   CATEGORY_MAP,
-  technologies,
 } from "@/lib/data";
 import { MATURITY_IDS, type CategoryId, type Technology } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -24,8 +23,8 @@ function hashSlug(slug: string) {
 function pointOnCircle(angle: number, radius: number) {
   const radians = (angle * Math.PI) / 180;
   return {
-    x: CENTER + Math.cos(radians) * radius,
-    y: CENTER + Math.sin(radians) * radius,
+    x: Math.round((CENTER + Math.cos(radians) * radius) * 100) / 100,
+    y: Math.round((CENTER + Math.sin(radians) * radius) * 100) / 100,
   };
 }
 
@@ -36,10 +35,12 @@ function sectorPath(startAngle: number, endAngle: number) {
 }
 
 export function RadarChart({
+  technologies,
   category,
   selectedSlug,
   onSelect,
 }: {
+  technologies: Technology[];
   category: CategoryId | "all";
   selectedSlug: string;
   onSelect: (tech: Technology) => void;
@@ -51,7 +52,7 @@ export function RadarChart({
       category === "all"
         ? technologies
         : technologies.filter((tech) => tech.category === category),
-    [category],
+    [category, technologies],
   );
 
   const dots = useMemo(() => {

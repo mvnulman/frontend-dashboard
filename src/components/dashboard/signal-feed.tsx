@@ -16,7 +16,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { signals } from "@/lib/data";
 import type { Signal } from "@/lib/types";
 
 const SIGNAL_STYLES: Record<
@@ -29,7 +28,7 @@ const SIGNAL_STYLES: Record<
   ecosystem: { icon: Boxes, color: "var(--chart-3)", label: "Ecossistema" },
 };
 
-export function SignalFeed() {
+export function SignalFeed({ signals }: { signals: Signal[] }) {
   return (
     <Card className="h-full gap-3 bg-card/70">
       <CardHeader>
@@ -47,51 +46,58 @@ export function SignalFeed() {
       </CardHeader>
 
       <CardContent>
-        <div className="divide-y divide-border/60">
-          {signals.slice(0, 5).map((signal) => {
-            const style = SIGNAL_STYLES[signal.type];
+        {signals.length === 0 ? (
+          <p className="py-8 text-center text-[11px] text-muted-foreground">
+            Nenhum sinal disponível. Configure o GITHUB_TOKEN para capturar
+            releases e atividade do ecossistema.
+          </p>
+        ) : (
+          <div className="divide-y divide-border/60">
+            {signals.slice(0, 5).map((signal) => {
+              const style = SIGNAL_STYLES[signal.type];
 
-            return (
-              <div
-                key={signal.id}
-                className="group flex gap-3 py-3 first:pt-0 last:pb-0"
-              >
-                <span
-                  className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-md ring-1 ring-inset ring-foreground/5"
-                  style={{
-                    color: style.color,
-                    backgroundColor: `color-mix(in oklab, ${style.color} 12%, transparent)`,
-                  }}
-                  aria-hidden="true"
+              return (
+                <div
+                  key={signal.id}
+                  className="group flex gap-3 py-3 first:pt-0 last:pb-0"
                 >
-                  <style.icon className="size-3.5" />
-                </span>
+                  <span
+                    className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-md ring-1 ring-inset ring-foreground/5"
+                    style={{
+                      color: style.color,
+                      backgroundColor: `color-mix(in oklab, ${style.color} 12%, transparent)`,
+                    }}
+                    aria-hidden="true"
+                  >
+                    <style.icon className="size-3.5" />
+                  </span>
 
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono text-[9px] tracking-[0.14em] text-muted-foreground uppercase">
-                      {signal.source}
-                    </span>
-                    <span className="text-border">/</span>
-                    <span className="text-[10px] text-muted-foreground">
-                      {signal.time}
-                    </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-[9px] tracking-[0.14em] text-muted-foreground uppercase">
+                        {signal.source}
+                      </span>
+                      <span className="text-border">/</span>
+                      <span className="text-[10px] text-muted-foreground">
+                        {signal.time}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-[13px] leading-snug font-medium">
+                      {signal.title}
+                    </p>
+                    <p className="mt-0.5 line-clamp-1 text-[11px] text-muted-foreground">
+                      {signal.description}
+                    </p>
                   </div>
-                  <p className="mt-1 text-[13px] leading-snug font-medium">
-                    {signal.title}
-                  </p>
-                  <p className="mt-0.5 line-clamp-1 text-[11px] text-muted-foreground">
-                    {signal.description}
-                  </p>
-                </div>
 
-                <span className="mt-1 hidden shrink-0 self-start rounded-md border border-border/70 bg-muted/30 px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground tabular-nums sm:block">
-                  {signal.metric}
-                </span>
-              </div>
-            );
-          })}
-        </div>
+                  <span className="mt-1 hidden shrink-0 self-start rounded-md border border-border/70 bg-muted/30 px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground tabular-nums sm:block">
+                    {signal.metric}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </CardContent>
     </Card>
   );

@@ -115,14 +115,11 @@ export function CommandMenu() {
             {technologies.map((tech) => (
               <CommandItem
                 key={tech.slug}
-                value={`${tech.name} ${tech.version} ${tech.tags.join(" ")} ${tech.category}`}
+                value={`${tech.name} ${tech.tags.join(" ")} ${tech.category}`}
                 onSelect={() => go(`/tendencias?tech=${tech.slug}`)}
               >
                 <CategoryDot category={tech.category} />
                 <span className="truncate">{tech.name}</span>
-                <span className="font-mono text-[10px] text-muted-foreground">
-                  {tech.kind === "platform" ? tech.version : `v${tech.version}`}
-                </span>
                 <CommandShortcut>
                   {CATEGORY_MAP[tech.category].shortLabel}
                 </CommandShortcut>

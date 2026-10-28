@@ -4,7 +4,6 @@ import type { ReactNode } from "react";
 import { AppSidebar } from "@/components/shell/app-sidebar";
 import { SiteHeader } from "@/components/shell/site-header";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
-import { SNAPSHOT } from "@/lib/data";
 
 export function DashboardShell({ children }: { children: ReactNode }) {
   return (
@@ -21,8 +20,8 @@ export function DashboardShell({ children }: { children: ReactNode }) {
               <span className="font-mono font-medium text-foreground/80">
                 frontend.radar
               </span>{" "}
-              · snapshot {SNAPSHOT.label} · dados demonstrativos, não representam
-              pesquisa de mercado.
+              · dados públicos de npm e GitHub · atualização automática a cada
+              30 min.
             </p>
             <p className="flex items-center gap-1.5">
               <span>Next.js</span>

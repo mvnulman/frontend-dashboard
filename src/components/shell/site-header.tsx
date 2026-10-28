@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ChevronRight, CircleDot } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 
 import { CommandMenu } from "@/components/shell/command-menu";
 import { GithubIcon } from "@/components/icons";
@@ -11,7 +11,6 @@ import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
-import { SNAPSHOT } from "@/lib/data";
 import { cn } from "@/lib/utils";
 
 const PAGE_TITLES: Record<string, string> = {
@@ -49,8 +48,11 @@ export function SiteHeader() {
           variant="outline"
           className="mr-1 hidden h-6 gap-1.5 border-border/80 bg-card/50 px-2 font-mono text-[10px] font-normal text-muted-foreground md:flex"
         >
-          <CircleDot className="size-2.5! text-chart-1" aria-hidden="true" />
-          snapshot {SNAPSHOT.label}
+          <span className="relative flex size-1.5">
+            <span className="absolute inline-flex size-full animate-ping rounded-full bg-chart-1 opacity-70" />
+            <span className="relative inline-flex size-1.5 rounded-full bg-chart-1" />
+          </span>
+          dados ao vivo
         </Badge>
         <CommandMenu />
         <Separator orientation="vertical" className="mx-1 h-4!" />

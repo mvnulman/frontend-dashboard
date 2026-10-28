@@ -27,7 +27,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { GithubIcon } from "@/components/icons";
-import { releases, SNAPSHOT, technologies } from "@/lib/data";
+import { technologies } from "@/lib/data";
 
 const primaryNav = [
   { href: "/", label: "Visão geral", icon: LayoutDashboard },
@@ -109,9 +109,6 @@ export function AppSidebar() {
                 {item.href === "/tendencias" && (
                   <SidebarMenuBadge>{technologies.length}</SidebarMenuBadge>
                 )}
-                {item.href === "/releases" && (
-                  <SidebarMenuBadge>{releases.length}</SidebarMenuBadge>
-                )}
               </SidebarMenuItem>
             ))}
           </SidebarMenu>
@@ -175,12 +172,12 @@ export function AppSidebar() {
               <span className="absolute inline-flex size-full animate-ping rounded-full bg-chart-1 opacity-75" />
               <span className="relative inline-flex size-1.5 rounded-full bg-chart-1" />
             </span>
-            Snapshot · {SNAPSHOT.label}
+            Dados ao vivo
           </div>
           <p className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground">
             {technologies.length} tecnologias monitoradas.
             <br />
-            Dados demonstrativos.
+            npm + GitHub · cache de 30 min.
           </p>
         </div>
       </SidebarFooter>

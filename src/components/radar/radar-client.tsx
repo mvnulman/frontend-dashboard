@@ -17,6 +17,7 @@ import { MaturityBadge } from "@/components/maturity-badge";
 import { PageHeader } from "@/components/page-header";
 import { RadarChart } from "@/components/radar/radar-chart";
 import { Reveal } from "@/components/reveal";
+import { SourceNotice } from "@/components/source-notice";
 import { Sparkline } from "@/components/sparkline";
 import { TechDetailDialog } from "@/components/tech-detail-dialog";
 import { buttonVariants } from "@/components/ui/button";
@@ -34,32 +35,47 @@ import {
   CATEGORY_MAP,
   MATURITIES,
   MATURITY_MAP,
-  SNAPSHOT,
-  getAdoptionSeries,
-  getMaturityCounts,
-  getMomentumLeaders,
-  technologies,
 } from "@/lib/data";
 import { formatCompact } from "@/lib/format";
-import type { CategoryId, Technology } from "@/lib/types";
+import type { CategoryId, DashboardData, Technology } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 type CategoryFilter = CategoryId | "all";
 
-const maturityCounts = getMaturityCounts();
-const ranked = [...technologies].sort((a, b) => b.momentum - a.momentum);
-
-export function RadarClient() {
+export function RadarClient({ data }: { data: DashboardData }) {
+  const technologies = data.technologies;
   const [category, setCategory] = useState<CategoryFilter>("all");
-  const [selected, setSelected] = useState<Technology>(() => getMomentumLeaders(1)[0]);
+  const [selected, setSelected] = useState<Technology>(
+    () =>
+      [...technologies]
+        .filter((tech) => tech.live)
+        .sort((a, b) => b.momentum - a.momentum)[0] ?? technologies[0],
+  );
   const [dialogTech, setDialogTech] = useState<Technology | null>(null);
+
+  const ranked = useMemo(
+    () =>
+      [...technologies]
+        .filter((tech) => tech.live)
+        .sort((a, b) => b.momentum - a.momentum),
+    [technologies],
+  );
+  const maturityCounts = useMemo(
+    () =>
+      MATURITIES.map((maturity) => ({
+        id: maturity.id,
+        count: technologies.filter((tech) => tech.maturity === maturity.id)
+          .length,
+      })),
+    [technologies],
+  );
 
   const visible = useMemo(
     () =>
       category === "all"
         ? technologies
         : technologies.filter((tech) => tech.category === category),
-    [category],
+    [category, technologies],
   );
 
   const visibleRanked = useMemo(
@@ -99,13 +115,13 @@ export function RadarClient() {
   const meta = CATEGORY_MAP[selected.category];
   const maturity = MATURITY_MAP[selected.maturity];
   const rank = ranked.findIndex((tech) => tech.slug === selected.slug) + 1;
-  const selectedSeries = getAdoptionSeries(selected, 12);
+  const selectedSeries = selected.series ?? [];
 
   return (
     <div className="space-y-4">
       <Reveal>
         <PageHeader
-          eyebrow={`radar · ${SNAPSHOT.label}`}
+          eyebrow={`radar · ${data.liveCount} métricas ao vivo`}
           title="Radar de tecnologias"
           description="Uma leitura do ciclo de adoção: raio indica maturidade, cor indica categoria. Clique em qualquer ponto para investigar."
           actions={
@@ -124,6 +140,11 @@ export function RadarClient() {
           }
         />
       </Reveal>
+
+      <SourceNotice
+        sources={data.sources}
+        githubConfigured={data.githubConfigured}
+      />
 
       <div className="grid grid-cols-1 gap-3 xl:grid-cols-12">
         <Reveal delay={60} className="xl:col-span-8">
@@ -198,6 +219,7 @@ export function RadarClient() {
               </div>
 
               <RadarChart
+                technologies={technologies}
                 category={category}
                 selectedSlug={selected.slug}
                 onSelect={selectTech}
@@ -274,7 +296,9 @@ export function RadarClient() {
                   <div className="mt-1 flex flex-wrap items-center gap-1.5">
                     <MaturityBadge maturity={selected.maturity} />
                     <span className="font-mono text-[9px] text-muted-foreground">
-                      #{rank} em momentum
+                      {selected.live
+                        ? `#${rank} em momentum`
+                        : "métricas editoriais"}
                     </span>
                   </div>
                 </div>
@@ -288,27 +312,35 @@ export function RadarClient() {
 
               <div className="grid grid-cols-2 gap-2">
                 {[
-                  { label: "Adoção", value: `${selected.adoption}`, hint: "/100" },
                   {
-                    label: "Momentum",
-                    value: `${selected.momentum}`,
-                    hint: "/100",
+                    label: "Adoção",
+                    value: selected.live ? `${selected.adoption}` : "—",
+                    hint: selected.live ? "/100" : null,
                   },
                   {
-                    label: "Crescimento",
+                    label: "Momentum",
+                    value: selected.live ? `${selected.momentum}` : "—",
+                    hint: selected.live ? "/100" : null,
+                  },
+                  {
+                    label: "Crescimento · 30d",
                     value: null,
                     hint: null,
                   },
                   {
                     label: "Alcance",
-                    value:
-                      selected.kind === "platform"
+                    value: !selected.live
+                      ? "—"
+                      : selected.kind === "platform"
                         ? "Web"
                         : formatCompact(selected.downloads),
-                    hint: selected.kind === "platform" ? "padrão" : "/semana",
+                    hint:
+                      selected.live && selected.kind !== "platform"
+                        ? "/semana"
+                        : null,
                   },
                 ].map((metric) =>
-                  metric.label === "Crescimento" ? (
+                  metric.label.startsWith("Crescimento") ? (
                     <div
                       key={metric.label}
                       className="rounded-lg border border-border/60 bg-background/30 px-2.5 py-2"
@@ -317,7 +349,11 @@ export function RadarClient() {
                         {metric.label}
                       </p>
                       <div className="mt-1">
-                        <GrowthBadge value={selected.growth} suffix="" />
+                        {selected.live && selected.downloads > 0 ? (
+                          <GrowthBadge value={selected.growth} suffix="" />
+                        ) : (
+                          <span className="text-sm text-muted-foreground">—</span>
+                        )}
                       </div>
                     </div>
                   ) : (
@@ -330,31 +366,35 @@ export function RadarClient() {
                       </p>
                       <p className="mt-1 font-mono text-base leading-none font-semibold tabular-nums">
                         {metric.value}
-                        <span className="ml-0.5 text-[9px] font-normal text-muted-foreground">
-                          {metric.hint}
-                        </span>
+                        {metric.hint && (
+                          <span className="ml-0.5 text-[9px] font-normal text-muted-foreground">
+                            {metric.hint}
+                          </span>
+                        )}
                       </p>
                     </div>
                   ),
                 )}
               </div>
 
-              <div className="rounded-lg border border-border/60 bg-background/30 px-2.5 pt-2 pb-1">
-                <div className="flex items-center justify-between">
-                  <span className="text-[9px] text-muted-foreground">
-                    Trajetória · 12 meses
-                  </span>
-                  <span className="font-mono text-[9px] tabular-nums">
-                    {selected.adoption}
-                  </span>
+              {selectedSeries.length > 0 && (
+                <div className="rounded-lg border border-border/60 bg-background/30 px-2.5 pt-2 pb-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[9px] text-muted-foreground">
+                      Downloads semanais · 12 semanas
+                    </span>
+                    <span className="font-mono text-[9px] tabular-nums">
+                      {formatCompact(selected.downloads)}
+                    </span>
+                  </div>
+                  <Sparkline
+                    data={selectedSeries}
+                    color={meta.color}
+                    className="h-12"
+                    showDot
+                  />
                 </div>
-                <Sparkline
-                  data={selectedSeries}
-                  color={meta.color}
-                  className="h-12"
-                  showDot
-                />
-              </div>
+              )}
 
               <p className="line-clamp-3 text-[11px] leading-relaxed text-muted-foreground">
                 {selected.description}
@@ -509,7 +549,7 @@ export function RadarClient() {
                             />
                             <span className="truncate">{tech.name}</span>
                             <span className="ml-auto font-mono text-[9px] tabular-nums">
-                              {tech.momentum}
+                              {tech.live ? tech.momentum : "—"}
                             </span>
                           </button>
                         </li>

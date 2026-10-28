@@ -17,6 +17,7 @@ import { CategoryDot } from "@/components/category-icon";
 import { PageHeader } from "@/components/page-header";
 import { Reveal } from "@/components/reveal";
 import { Segmented } from "@/components/segmented";
+import { SourceNotice } from "@/components/source-notice";
 import { buttonVariants } from "@/components/ui/button";
 import {
   Card,
@@ -36,18 +37,21 @@ import {
 import {
   CATEGORIES,
   CATEGORY_MAP,
-  SNAPSHOT,
-  getReleaseCountByMonth,
-  getTechBySlug,
-  releases,
 } from "@/lib/data";
 import {
   formatDay,
   formatMonth,
   formatMonthKey,
   formatMonthShortKey,
+  formatMonthYear,
 } from "@/lib/format";
-import type { CategoryId, Release, ReleaseType } from "@/lib/types";
+import type {
+  CategoryId,
+  DashboardData,
+  Release,
+  ReleaseType,
+  Technology,
+} from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 type TypeFilter = ReleaseType | "all";
@@ -80,44 +84,13 @@ const IMPACT_META = {
   baixo: { label: "impacto baixo", color: "var(--muted-foreground)" },
 } as const;
 
-const majorCount = releases.filter((release) => release.type === "major").length;
-const minorCount = releases.filter((release) => release.type === "minor").length;
-const previewCount = releases.filter(
-  (release) => release.type === "preview",
-).length;
-
-const TYPE_OPTIONS: { value: TypeFilter; label: string }[] = [
-  { value: "all", label: `Todos ${releases.length}` },
-  { value: "major", label: `Major ${majorCount}` },
-  { value: "minor", label: `Minor ${minorCount}` },
-  { value: "preview", label: `Preview ${previewCount}` },
-];
-
-const CATEGORY_OPTIONS: { value: CategoryFilter; label: string }[] = [
-  { value: "all", label: "Toda categoria" },
-  ...CATEGORIES.map((category) => ({
-    value: category.id,
-    label: category.label,
-  })),
-];
-
-const categoryCounts = CATEGORIES.map((category) => ({
-  ...category,
-  count: releases.filter(
-    (release) => getTechBySlug(release.techSlug)?.category === category.id,
-  ).length,
-})).sort((a, b) => b.count - a.count);
-
-const impactCounts = (["alto", "médio", "baixo"] as const).map((impact) => ({
-  impact,
-  count: releases.filter((release) => release.impact === impact).length,
-}));
-
-const monthCounts = getReleaseCountByMonth().slice(-3);
-const maxMonthCount = Math.max(...monthCounts.map((item) => item.count));
-
-function ReleaseRow({ release }: { release: Release }) {
-  const tech = getTechBySlug(release.techSlug);
+function ReleaseRow({
+  release,
+  tech,
+}: {
+  release: Release;
+  tech?: Technology;
+}) {
   const type = TYPE_META[release.type];
   const impact = IMPACT_META[release.impact];
 
@@ -211,19 +184,77 @@ function ReleaseRow({ release }: { release: Release }) {
   );
 }
 
-export function ReleasesClient() {
+export function ReleasesClient({ data }: { data: DashboardData }) {
+  const releases = data.releases;
+  const techBySlug = useMemo(
+    () => new Map(data.technologies.map((tech) => [tech.slug, tech])),
+    [data.technologies],
+  );
   const [type, setType] = useState<TypeFilter>("all");
   const [category, setCategory] = useState<CategoryFilter>("all");
+
+  const TYPE_OPTIONS: { value: TypeFilter; label: string }[] = [
+    { value: "all", label: "Todos" },
+    { value: "major", label: "Major" },
+    { value: "minor", label: "Minor" },
+    { value: "preview", label: "Preview" },
+  ];
+
+  const CATEGORY_OPTIONS: { value: CategoryFilter; label: string }[] = [
+    { value: "all", label: "Toda categoria" },
+    ...CATEGORIES.map((categoryOption) => ({
+      value: categoryOption.id,
+      label: categoryOption.label,
+    })),
+  ];
+
+  const categoryCounts = CATEGORIES.map((categoryOption) => ({
+    ...categoryOption,
+    count: releases.filter(
+      (release) => techBySlug.get(release.techSlug)?.category === categoryOption.id,
+    ).length,
+  })).sort((a, b) => b.count - a.count);
+
+  const impactCounts = (["alto", "médio", "baixo"] as const).map((impact) => ({
+    impact,
+    count: releases.filter((release) => release.impact === impact).length,
+  }));
+
+  const monthCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const release of releases) {
+      const key = release.date.slice(0, 7);
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+    return [...counts.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .slice(-3)
+      .map(([month, count]) => ({ month, count }));
+  }, [releases]);
+
+  const maxMonthCount = Math.max(
+    ...monthCounts.map((item) => item.count),
+    1,
+  );
+
+  const rangeStart = releases.at(-1)?.date;
+  const rangeEnd = releases[0]?.date;
+  const rangeLabel =
+    rangeStart && rangeEnd
+      ? rangeStart.slice(0, 7) === rangeEnd.slice(0, 7)
+        ? formatMonthYear(rangeStart)
+        : `${formatMonthYear(rangeStart)} – ${formatMonthYear(rangeEnd)}`
+      : "Sem releases disponíveis";
 
   const filtered = useMemo(() => {
     return releases.filter((release) => {
       const matchesType = type === "all" || release.type === type;
-      const tech = getTechBySlug(release.techSlug);
+      const tech = techBySlug.get(release.techSlug);
       const matchesCategory =
         category === "all" || tech?.category === category;
       return matchesType && matchesCategory;
     });
-  }, [category, type]);
+  }, [category, techBySlug, type, releases]);
 
   const groups = useMemo(() => {
     const map = new Map<string, Release[]>();
@@ -240,9 +271,9 @@ export function ReleasesClient() {
     <div className="space-y-4">
       <Reveal>
         <PageHeader
-          eyebrow={`releases · ${SNAPSHOT.label}`}
+          eyebrow={`releases · ${data.releases90d} nos últimos 90 dias`}
           title="Timeline de lançamentos"
-          description="O ritmo de evolução do ecossistema em um só lugar. Filtre por tipo de release ou categoria e acompanhe o que muda em cada versão."
+          description="Lançamentos reais capturados no GitHub. Filtre por tipo ou categoria e acompanhe o ritmo de evolução do ecossistema."
           actions={
             <>
               <Link
@@ -261,33 +292,38 @@ export function ReleasesClient() {
         />
       </Reveal>
 
+      <SourceNotice
+        sources={data.sources}
+        githubConfigured={data.githubConfigured}
+      />
+
       <Reveal delay={50}>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           {[
             {
               label: "Releases",
-              value: releases.length,
-              hint: "últimos 90 dias",
+              value: data.releases90d,
+              hint: "90 dias",
               icon: Tag,
               color: "var(--chart-2)",
             },
             {
               label: "Major",
-              value: majorCount,
+              value: data.releaseCounts.major,
               hint: "breaking changes",
               icon: GitBranch,
               color: "var(--chart-4)",
             },
             {
               label: "Minor",
-              value: minorCount,
+              value: data.releaseCounts.minor,
               hint: "evolução contínua",
               icon: CalendarDays,
               color: "var(--chart-1)",
             },
             {
               label: "Preview",
-              value: previewCount,
+              value: data.releaseCounts.preview,
               hint: "aguardando estabilidade",
               icon: Sparkles,
               color: "var(--chart-3)",
@@ -326,8 +362,7 @@ export function ReleasesClient() {
             <CardHeader>
               <CardTitle>Linha do tempo</CardTitle>
               <CardDescription>
-                {filtered.length} de {releases.length} releases · mais recentes
-                primeiro
+                {filtered.length} releases · mais recentes primeiro
               </CardDescription>
               <CardAction>
                 {hasFilters && (
@@ -415,7 +450,11 @@ export function ReleasesClient() {
                         <span className="h-px flex-1 bg-border/70" />
                       </div>
                       {items.map((release) => (
-                        <ReleaseRow key={release.id} release={release} />
+                        <ReleaseRow
+                          key={release.id}
+                          release={release}
+                          tech={techBySlug.get(release.techSlug)}
+                        />
                       ))}
                     </div>
                   ))}
@@ -429,9 +468,9 @@ export function ReleasesClient() {
           <div className="flex flex-col gap-3 xl:sticky xl:top-20">
             <Card className="gap-3 bg-card/70">
               <CardHeader>
-                <CardTitle>Resumo do trimestre</CardTitle>
+                <CardTitle>Resumo recente</CardTitle>
                 <CardDescription>
-                  ago–out 2026 · {releases.length} releases
+                  {rangeLabel} · {releases.length} releases exibidos
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -484,7 +523,7 @@ export function ReleasesClient() {
                         <div
                           className="h-full rounded-full"
                           style={{
-                            width: `${(category.count / releases.length) * 100}%`,
+                            width: `${(category.count / Math.max(releases.length, 1)) * 100}%`,
                             background: category.color,
                           }}
                         />
@@ -528,11 +567,22 @@ export function ReleasesClient() {
                 <CardTitle className="text-sm">O que observar</CardTitle>
               </CardHeader>
               <CardContent className="space-y-2.5">
-                {[
-                  `${categoryCounts[0].label} concentra ${categoryCounts[0].count} dos ${releases.length} lançamentos do trimestre.`,
-                  `${majorCount} majors em 90 dias: revise o plano de upgrades antes do próximo ciclo.`,
-                  "TypeScript 7 está em preview público — vale testar, mas ainda não é padrão de produção.",
-                ].map((insight) => (
+                {(categoryCounts[0]?.count
+                  ? [
+                      `${categoryCounts[0].label} concentra ${categoryCounts[0].count} dos ${releases.length} lançamentos recentes.`,
+                      data.releaseCounts.major > 0
+                        ? `${data.releaseCounts.major} majors na janela recente: revise o plano de upgrades antes do próximo ciclo.`
+                        : "Nenhum release major na janela recente; o ciclo atual é predominantemente incremental.",
+                      releases.find((release) => release.type === "preview")
+                        ? `${releases.find((release) => release.type === "preview")?.title} está em preview — vale testar, mas ainda não é padrão de produção.`
+                        : "Nenhum preview aberto na janela recente.",
+                    ]
+                  : [
+                      "Nenhum release disponível agora.",
+                      "Configure GITHUB_TOKEN para carregar a timeline real do GitHub.",
+                      "Os demais indicadores continuam funcionando com dados do npm.",
+                    ]
+                ).map((insight) => (
                   <div key={insight} className="flex gap-2">
                     <span className="mt-1.5 size-1 shrink-0 rounded-full bg-chart-1" />
                     <p className="text-[10px] leading-relaxed text-muted-foreground">

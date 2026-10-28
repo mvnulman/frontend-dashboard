@@ -18,7 +18,8 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart";
-import { MATURITIES, getMaturityCounts } from "@/lib/data";
+import { MATURITIES } from "@/lib/data";
+import type { MaturityId } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 const chartConfig = MATURITIES.reduce<ChartConfig>((config, maturity) => {
@@ -29,8 +30,11 @@ const chartConfig = MATURITIES.reduce<ChartConfig>((config, maturity) => {
   return config;
 }, {});
 
-export function MaturityDonut() {
-  const counts = getMaturityCounts();
+export function MaturityDonut({
+  counts,
+}: {
+  counts: { id: MaturityId; count: number }[];
+}) {
   const total = counts.reduce((sum, item) => sum + item.count, 0);
   const data = counts.map((item) => {
     const meta = MATURITIES.find((maturity) => maturity.id === item.id)!;

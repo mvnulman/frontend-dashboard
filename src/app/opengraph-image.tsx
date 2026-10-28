@@ -1,11 +1,6 @@
 import { ImageResponse } from "next/og";
 
-import {
-  SNAPSHOT,
-  getRisingTechnologies,
-  releases,
-  technologies,
-} from "@/lib/data";
+import { technologies } from "@/lib/data";
 
 export const alt =
   "Frontend Radar — painel de tendências e tecnologias do ecossistema frontend";
@@ -128,7 +123,7 @@ export default function OpengraphImage() {
               fontFamily: "monospace",
             }}
           >
-            snapshot · {SNAPSHOT.label}
+            dados públicos · npm + github
           </span>
           <span
             style={{
@@ -165,9 +160,9 @@ export default function OpengraphImage() {
         >
           {[
             { value: technologies.length, label: "tecnologias" },
-            { value: releases.length, label: "releases" },
-            { value: getRisingTechnologies().length, label: "em ascensão" },
-            { value: 5, label: "categorias" },
+            { value: "npm", label: "+ github" },
+            { value: 12, label: "semanas" },
+            { value: "30m", label: "de cache" },
           ].map((stat) => (
             <div
               key={stat.label}

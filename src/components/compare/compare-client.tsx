@@ -19,6 +19,7 @@ import { GrowthBadge } from "@/components/growth-badge";
 import { MaturityBadge } from "@/components/maturity-badge";
 import { PageHeader } from "@/components/page-header";
 import { Reveal } from "@/components/reveal";
+import { SourceNotice } from "@/components/source-notice";
 import { Sparkline } from "@/components/sparkline";
 import { Button } from "@/components/ui/button";
 import {
@@ -37,17 +38,13 @@ import {
 } from "@/components/ui/select";
 import {
   CATEGORY_MAP,
-  SNAPSHOT,
-  getAdoptionSeries,
-  getTechBySlug,
-  technologies,
 } from "@/lib/data";
 import {
   formatCompact,
   formatShortDate,
   formatSigned,
 } from "@/lib/format";
-import type { Technology } from "@/lib/types";
+import type { DashboardData, Technology } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 const SLOT_COLORS = ["var(--chart-1)", "var(--chart-2)", "var(--chart-3)"];
@@ -61,9 +58,9 @@ const PRESETS: { label: string; slugs: string[] }[] = [
 
 const DEFAULT_SLUGS = PRESETS[0].slugs;
 
-function resolve(slugs: string[]) {
+function resolve(slugs: string[], items: Technology[]) {
   return slugs
-    .map((slug) => getTechBySlug(slug))
+    .map((slug) => items.find((tech) => tech.slug === slug))
     .filter((tech): tech is Technology => Boolean(tech));
 }
 
@@ -112,7 +109,7 @@ const BASE_ROWS: MetricRow[] = [
     ),
   },
   {
-    label: "Crescimento",
+    label: "Crescimento · 30d",
     raw: (tech) => tech.growth,
     render: (tech) => <GrowthBadge value={tech.growth} suffix="" />,
   },
@@ -186,8 +183,16 @@ const SCORE_ROWS: MetricRow[] = [
   },
 ];
 
-export function CompareClient() {
-  const [items, setItems] = useState<Technology[]>(() => resolve(DEFAULT_SLUGS));
+export function CompareClient({ data }: { data: DashboardData }) {
+  const liveTechs = useMemo(
+    () =>
+      data.technologies.filter((tech) => tech.live && tech.downloads > 0),
+    [data.technologies],
+  );
+  const [items, setItems] = useState<Technology[]>(() => {
+    const defaults = resolve(DEFAULT_SLUGS, liveTechs);
+    return defaults.length >= 2 ? defaults : liveTechs.slice(0, 3);
+  });
 
   const selectedSlugs = useMemo(
     () => new Set(items.map((tech) => tech.slug)),
@@ -201,7 +206,7 @@ export function CompareClient() {
   );
 
   const updateSlot = (index: number, slug: string) => {
-    const next = getTechBySlug(slug);
+    const next = liveTechs.find((tech) => tech.slug === slug);
     if (!next) return;
     setItems((current) =>
       current.map((tech, currentIndex) =>
@@ -212,7 +217,7 @@ export function CompareClient() {
 
   const addSlot = () => {
     if (items.length >= 3) return;
-    const candidate = [...technologies]
+    const candidate = [...liveTechs]
       .filter((tech) => !selectedSlugs.has(tech.slug))
       .sort((a, b) => b.momentum - a.momentum)[0];
     if (candidate) setItems((current) => [...current, candidate]);
@@ -224,14 +229,15 @@ export function CompareClient() {
   };
 
   const applyPreset = (slugs: string[]) => {
-    setItems(resolve(slugs));
+    const next = resolve(slugs, liveTechs);
+    if (next.length >= 2) setItems(next);
   };
 
   return (
     <div className="space-y-4">
       <Reveal>
         <PageHeader
-          eyebrow={`comparador · ${SNAPSHOT.label}`}
+          eyebrow={`comparador · ${data.liveCount} métricas ao vivo`}
           title="Comparar tecnologias"
           description="Coloque até três tecnologias lado a lado e compare adoção, momentum, scores e contexto de uso."
           actions={
@@ -242,6 +248,11 @@ export function CompareClient() {
           }
         />
       </Reveal>
+
+      <SourceNotice
+        sources={data.sources}
+        githubConfigured={data.githubConfigured}
+      />
 
       <Reveal delay={50}>
         <div className="flex flex-wrap items-center gap-2">
@@ -277,7 +288,7 @@ export function CompareClient() {
         {items.map((tech, index) => {
           const color = SLOT_COLORS[index % SLOT_COLORS.length];
           const meta = CATEGORY_MAP[tech.category];
-          const options = technologies
+          const options = liveTechs
             .filter(
               (candidate) =>
                 !selectedSlugs.has(candidate.slug) ||
@@ -365,7 +376,7 @@ export function CompareClient() {
                 </div>
 
                 <Sparkline
-                  data={getAdoptionSeries(tech, 12)}
+                  data={tech.series ?? []}
                   color={color}
                   className="h-9"
                   filled={false}
@@ -383,7 +394,7 @@ export function CompareClient() {
                       value: `${tech.momentum}`,
                     },
                     {
-                      label: "Crescimento",
+                      label: "Cresc. 30d",
                       value: formatSigned(tech.growth),
                     },
                   ].map((metric) => (
@@ -683,8 +694,8 @@ export function CompareClient() {
 
       <p className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
         <Sparkles className="size-3 text-chart-1" aria-hidden="true" />
-        Snapshot {SNAPSHOT.label} · dados demonstrativos. Use os presets para
-        trocar o contexto da comparação.
+        Dados públicos de npm + GitHub. Use os presets para trocar o contexto da
+        comparação.
       </p>
     </div>
   );

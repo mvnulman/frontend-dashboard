@@ -7,7 +7,7 @@ export function GrowthBadge({
   value,
   className,
   withIcon = true,
-  suffix = "YoY",
+  suffix = "30d",
 }: {
   value: number;
   className?: string;
