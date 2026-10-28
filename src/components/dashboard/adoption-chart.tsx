@@ -94,9 +94,10 @@ export function CategoryAdoptionChart({ series }: { series: AdoptionSeries }) {
       <CardContent className="pt-2">
         <ChartContainer
           config={chartConfig}
-          className="h-[290px] w-full md:h-[320px]"
+          className="chart-draw h-[290px] w-full md:h-[320px]"
         >
           <LineChart
+            key={period}
             accessibilityLayer
             data={data}
             margin={{ top: 8, right: 12, left: 4, bottom: 0 }}
@@ -149,9 +150,7 @@ export function CategoryAdoptionChart({ series }: { series: AdoptionSeries }) {
                 strokeWidth={2}
                 dot={false}
                 activeDot={{ r: 4, strokeWidth: 2, stroke: "var(--background)" }}
-                isAnimationActive
-                animationDuration={700}
-                animationEasing="ease-out"
+                isAnimationActive={false}
               />
             ))}
           </LineChart>
