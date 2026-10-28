@@ -88,7 +88,7 @@ export function RadarChart({
       <svg
         viewBox={`0 0 ${SIZE} ${SIZE}`}
         className="mx-auto w-full max-w-[720px]"
-        role="img"
+        role="group"
         aria-label="Radar de tecnologias por categoria e maturidade"
       >
         <defs>

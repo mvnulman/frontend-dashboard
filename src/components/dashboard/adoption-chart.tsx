@@ -59,8 +59,8 @@ export function CategoryAdoptionChart({ series }: { series: AdoptionSeries }) {
   const values = data.flatMap((point) =>
     visibleCategories.map((category) => point[category.id]),
   );
-  const min = Math.min(100, ...values);
-  const max = Math.max(...values);
+  const min = values.length ? Math.min(100, ...values) : 100;
+  const max = values.length ? Math.max(...values) : 110;
   const domain: [number, number] = [
     Math.floor((min - 6) / 10) * 10,
     Math.ceil((max + 6) / 10) * 10,

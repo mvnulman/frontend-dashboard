@@ -8,6 +8,7 @@ import {
   Radar,
   Tag,
   TrendingUp,
+  X,
 } from "lucide-react";
 
 import {
@@ -23,6 +24,7 @@ import {
   SidebarMenuItem,
   SidebarRail,
   SidebarSeparator,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import { GithubIcon } from "@/components/icons";
 import { releases, SNAPSHOT, technologies } from "@/lib/data";
@@ -40,19 +42,28 @@ const analysisNav = [
 
 export function AppSidebar() {
   const pathname = usePathname();
+  const { isMobile, setOpenMobile } = useSidebar();
 
   const isActive = (href: string) =>
     href === "/" ? pathname === "/" : pathname.startsWith(href);
 
+  const closeMobile = () => setOpenMobile(false);
+
   return (
-    <Sidebar collapsible="icon" className="border-r border-sidebar-border">
-      <SidebarHeader className="pt-1">
+    <Sidebar
+      collapsible="icon"
+      className="border-r border-sidebar-border"
+      role={isMobile ? undefined : "navigation"}
+      aria-label={isMobile ? undefined : "Navegação principal"}
+    >
+      <SidebarHeader className="relative pt-1">
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton
               size="lg"
               tooltip="Frontend Radar"
-              render={<Link href="/" aria-label="Frontend Radar — início" />}
+              render={<Link href="/" />}
+              onClick={closeMobile}
             >
               <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm">
                 <Radar className="size-4.5" />
@@ -68,6 +79,14 @@ export function AppSidebar() {
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
+        <button
+          type="button"
+          onClick={closeMobile}
+          aria-label="Fechar menu"
+          className="absolute top-3 right-2 flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground md:hidden"
+        >
+          <X className="size-4" />
+        </button>
       </SidebarHeader>
 
       <SidebarContent>
@@ -82,6 +101,7 @@ export function AppSidebar() {
                   isActive={isActive(item.href)}
                   tooltip={item.label}
                   render={<Link href={item.href} />}
+                  onClick={closeMobile}
                 >
                   <item.icon />
                   <span>{item.label}</span>
@@ -108,6 +128,7 @@ export function AppSidebar() {
                   isActive={isActive(item.href)}
                   tooltip={item.label}
                   render={<Link href={item.href} />}
+                  onClick={closeMobile}
                 >
                   <item.icon />
                   <span>{item.label}</span>
@@ -127,6 +148,7 @@ export function AppSidebar() {
             <SidebarMenuItem>
               <SidebarMenuButton
                 tooltip="Repositório no GitHub"
+                onClick={closeMobile}
                 render={
                   <a
                     href="https://github.com/mvnulman/frontend-dashboard"

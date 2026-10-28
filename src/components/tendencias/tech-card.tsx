@@ -43,7 +43,7 @@ export function TechCard({
         <CategoryIcon category={tech.category} className="size-8 rounded-lg" />
         <div className="min-w-0 flex-1">
           <div className="flex items-baseline gap-1.5">
-            <h3 className="truncate text-sm font-semibold">{tech.name}</h3>
+            <h2 className="truncate text-sm font-semibold">{tech.name}</h2>
             <span className="font-mono text-[10px] text-muted-foreground">
               {tech.kind === "platform" ? tech.version : `v${tech.version}`}
             </span>

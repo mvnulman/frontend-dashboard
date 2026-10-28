@@ -135,9 +135,9 @@ function ReleaseRow({ release }: { release: Release }) {
       <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-1">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <h3 className="text-[13px] leading-snug font-medium">
+            <h2 className="text-[13px] leading-snug font-medium">
               {release.title}
-            </h3>
+            </h2>
             <span
               className="inline-flex h-4 items-center rounded px-1 font-mono text-[9px] ring-1 ring-inset ring-current/20"
               style={{

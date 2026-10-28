@@ -44,7 +44,7 @@ export function MomentumList() {
               href={`/tendencias?tech=${tech.slug}`}
               className="group -mx-2 flex items-center gap-3 rounded-lg px-2 py-2 transition-colors outline-none hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring/50"
             >
-              <span className="w-4 shrink-0 font-mono text-[10px] text-muted-foreground/70 tabular-nums">
+              <span className="w-4 shrink-0 font-mono text-[10px] text-muted-foreground tabular-nums">
                 {String(index + 1).padStart(2, "0")}
               </span>
 

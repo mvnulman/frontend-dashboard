@@ -497,7 +497,15 @@ export function CompareClient() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="overflow-x-auto">
+            <p className="mb-2 text-[10px] text-muted-foreground md:hidden">
+              Deslize para o lado para ver todas as colunas →
+            </p>
+            <div
+              className="overflow-x-auto focus-visible:ring-2 focus-visible:ring-ring/40"
+              tabIndex={0}
+              role="region"
+              aria-label="Tabela comparativa de tecnologias"
+            >
               <table className="w-full min-w-[700px] border-collapse text-left">
                 <thead>
                   <tr className="border-b border-border/70">
@@ -572,11 +580,15 @@ export function CompareClient() {
                               >
                                 {row.render(tech)}
                                 {best && (
-                                  <span
-                                    className="size-1 rounded-full bg-chart-1"
-                                    title="Melhor valor"
-                                    aria-label="Melhor valor"
-                                  />
+                                  <span className="inline-flex items-center gap-1">
+                                    <span
+                                      className="size-1 rounded-full bg-chart-1"
+                                      aria-hidden="true"
+                                    />
+                                    <span className="sr-only">
+                                      Melhor valor do comparativo
+                                    </span>
+                                  </span>
                                 )}
                               </span>
                             </td>

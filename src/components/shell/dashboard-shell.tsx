@@ -10,11 +10,11 @@ export function DashboardShell({ children }: { children: ReactNode }) {
   return (
     <SidebarProvider>
       <AppSidebar />
-      <SidebarInset>
+      <SidebarInset className="min-w-0">
         <SiteHeader />
-        <main className="flex-1 px-4 py-6 md:px-6 lg:px-8 lg:py-8">
+        <div className="flex-1 overflow-x-clip px-4 py-6 md:px-6 lg:px-8 lg:py-8">
           <div className="mx-auto w-full max-w-[1500px]">{children}</div>
-        </main>
+        </div>
         <footer className="mt-auto border-t border-border/70 px-4 py-5 md:px-6 lg:px-8">
           <div className="mx-auto flex w-full max-w-[1500px] flex-col gap-2 text-[11px] text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
             <p>

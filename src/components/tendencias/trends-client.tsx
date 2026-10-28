@@ -328,7 +328,7 @@ export function TrendsClient() {
                   <span
                     className={cn(
                       "font-mono text-[9px] tabular-nums",
-                      active ? "text-background/60" : "text-muted-foreground/60",
+                      active ? "text-background/70" : "text-muted-foreground",
                     )}
                   >
                     {option.count}

@@ -36,7 +36,7 @@ const MONTHS_LONG = [
 ];
 
 export function formatCompact(value: number) {
-  return compactFormatter.format(value).replace("mil", "mil");
+  return compactFormatter.format(value);
 }
 
 export function formatNumber(value: number) {
@@ -88,8 +88,4 @@ export function formatMonthKey(key: string) {
 export function formatMonthShortKey(key: string) {
   const [year, month] = key.split("-").map(Number);
   return `${MONTHS_SHORT[month - 1]}/${String(year).slice(2)}`;
-}
-
-export function pluralize(count: number, singular: string, plural: string) {
-  return `${count} ${count === 1 ? singular : plural}`;
 }

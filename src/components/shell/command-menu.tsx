@@ -4,16 +4,17 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowRight,
+  Copy,
   LayoutDashboard,
   Moon,
   Radar as RadarIcon,
-  RefreshCcw,
   Search,
   Tag,
   TrendingUp,
   GitCompareArrows,
 } from "lucide-react";
 import { useTheme } from "next-themes";
+import { toast } from "sonner";
 
 import {
   Command,
@@ -155,14 +156,21 @@ export function CommandMenu() {
               Abrir repositório
             </CommandItem>
             <CommandItem
-              value="atualizar snapshot dados"
+              value="copiar link url página compartilhar"
               onSelect={() => {
                 setOpen(false);
-                router.refresh();
+                if (!navigator.clipboard) {
+                  toast.error("Seu navegador não permite copiar automaticamente");
+                  return;
+                }
+                navigator.clipboard
+                  .writeText(window.location.href)
+                  .then(() => toast.success("Link copiado"))
+                  .catch(() => toast.error("Não foi possível copiar o link"));
               }}
             >
-              <RefreshCcw className="text-muted-foreground" />
-              Atualizar snapshot
+              <Copy className="text-muted-foreground" />
+              Copiar link da página
             </CommandItem>
           </CommandGroup>
           </CommandList>

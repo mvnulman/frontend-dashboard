@@ -189,7 +189,7 @@ export function RadarClient() {
                         style={{ background: item.color }}
                       />
                       {item.shortLabel}
-                      <span className="font-mono text-[9px] opacity-60">
+                      <span className="font-mono text-[9px]">
                         {count}
                       </span>
                     </button>
