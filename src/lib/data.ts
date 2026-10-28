@@ -1854,6 +1854,28 @@ export function getCategorySeries(months = 24): AdoptionPoint[] {
   });
 }
 
+/**
+ * Série indexada em 100 no primeiro mês do período.
+ * Facilita comparar a tração relativa entre categorias com bases diferentes.
+ */
+export function getCategoryGrowthSeries(months = 12): AdoptionPoint[] {
+  const levels = getCategorySeries(months);
+  const first = levels[0];
+
+  return levels.map((point) => {
+    const indexed = { month: point.month } as AdoptionPoint;
+
+    for (const categoryId of CATEGORY_IDS) {
+      const base = first[categoryId] || 1;
+      indexed[categoryId] = Number(
+        ((point[categoryId] / base) * 100).toFixed(1),
+      );
+    }
+
+    return indexed;
+  });
+}
+
 export function getOverallSeries(months = 12): number[] {
   const seriesByTech = technologies.map((tech) => getAdoptionSeries(tech, 12));
   const start = 12 - months;
