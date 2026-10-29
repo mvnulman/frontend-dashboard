@@ -1,5 +1,4 @@
-# Template base. O sweep do repo-policy adiciona os ecossistemas
-# detectados (npm, pip, docker etc.) automaticamente.
+# Gerenciado por mvnulman/repo-policy
 version: 2
 updates:
   - package-ecosystem: "npm"
@@ -12,20 +11,16 @@ updates:
     open-pull-requests-limit: 5
     rebase-strategy: "auto"
     groups:
-      npm-minor-patch:
-        patterns: ["*"]
+      production-dependencies:
+        dependency-type: "production"
         update-types: ["minor", "patch"]
-      npm-major:
-        patterns: ["*"]
-        update-types: ["major"]
+      development-dependencies:
+        dependency-type: "development"
+        update-types: ["minor", "patch"]
     labels: ["dependencies"]
     commit-message:
       prefix: "chore(deps)"
-    ignore:
-      # typescript-eslint ainda não suporta TypeScript 7.
-      - dependency-name: "typescript"
-        update-types: ["version-update:semver-major"]
-
+      prefix-development: "chore(deps-dev)"
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
